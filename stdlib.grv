@@ -1,0 +1,19 @@
+struct Array {
+    _: int8;
+    def push(item: any) -> null {
+        // print(*(self._));
+        _array_push(*(self._), item);
+    }
+    def get() -> array {
+        return *(self._);
+    }
+}
+
+def Array(items: array) -> Array {
+    alloc _x: array; // assign on heap
+    _x = items;
+    //ThisDoesntExist("hi", &_x);
+    alloc x: Array;
+    x._ = &_x;
+    return x;
+}

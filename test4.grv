@@ -1,0 +1,13 @@
+import constants;
+
+print(PI);
+
+try {
+    alloc x: int8 = input("Put in a number: ");
+    print("Your number is:", x);
+} catch {
+    print("That's not a number.");
+}
+
+import debug;
+debug();

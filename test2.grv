@@ -1,0 +1,35 @@
+struct Player {
+	points: int8;
+}
+
+def main() -> null {
+	alloc player: Player;
+	alloc player2: Player;
+	print("hello");
+	print("P1");
+	print("pointer:", &player);
+	print(player);
+	// player.points = "test"; // WORKS NVM IT DOESNT ANYMORE
+	// player.points += 1; DOESN'T WORK SYNTAX ERROR
+	// player.points = player.points + 1; SYNTAX ERROR
+	alloc x: int8;
+	// x = "hi"; DOESN'T WORK - TYPE ERROR - CAN'T CAST STRING TO INT
+	// print(x);
+	struct Test {
+	    x: int8;
+	}
+	alloc x: Test;
+	// x.x = "hello"; // WORKS - IT DOESN'T NOW
+	print(x); // WHY? BECAUSE STRUCTS DO~~N'T~~ FUCKING CARE
+	print(player);
+	print("P2");
+	print("pointer:", &player2);
+    print(player2);
+    player2.points = 69;
+    print(player2);
+    // return player; // DOESN'T WORK - function said it returns null :D (idk why i stopped screaming)
+}
+
+for (alloc i: int8 = 0; i < 1; i = i + 1;) {
+    main();
+}

@@ -1,0 +1,58 @@
+enum Team {
+    RED, // comma separated ONLY
+    BLUE, // MUST have trailing comma
+}
+
+struct Player {
+    name: string;
+    score: int8;
+    team: Team;
+}
+
+def create_player(name: string, team: Team) -> Player {
+    alloc p: Player;
+    p.name = name;
+    p.score = 0;
+    p.team = team;
+    return p;
+}
+
+def get_player_score(p: Player) -> int8 {
+    return p.score;
+}
+
+def add_score(p: Player, amount: int8) -> int8 {
+    p.score = get_player_score(p) + amount;
+    return p.score;
+}
+
+def print_score(p: Player) -> null {
+    print("Player:");
+    print(p);
+    // no need for explicit return
+}
+
+// temporarily disabled print's pretty printing, standard library was moved.
+
+alloc p1: Player;
+p1 = create_player("Alice", Team.RED);
+alloc p2: Player;
+p2 = create_player("Bob", Team.BLUE);
+alloc p3: Player = create_player("Charlie", Team.RED);
+
+print_score(p1);
+print_score(p2);
+print_score(p3);
+
+add_score(p1, 10);
+add_score(p2, 20);
+add_score(p3, 30);
+
+print("== After scoring ==");
+print_score(p1);
+print_score(p2);
+print_score(p3);
+
+print("== DEBUG ==");
+debug_print(p1, p2, p3);
+print(<string>gravox_heapusage() + "b/" + <string>gravox_heapsize() + "b"); // type casting works!
