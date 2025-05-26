@@ -17,3 +17,24 @@ def Array(items: array) -> Array {
     x._ = &_x;
     return x;
 }
+
+struct Fs {
+    def write(file_name: string, contents: string) -> int8 {
+        return _file_exec(file_name, "w+", contents);
+    }
+    def read(file_name: string) -> string {
+        return _file_exec(file_name, "r", null);
+    }
+}
+
+struct Json {
+    def load(value: string) -> any {
+        return _json_exec("load", value);
+    }
+    def dump(object: any) -> string {
+        return _json_exec("dump", object);
+    }
+}
+
+alloc fs: Fs;
+alloc json: Json;

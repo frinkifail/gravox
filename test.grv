@@ -1,20 +1,11 @@
 import stdlib;
 
-alloc x: Array;
-x = Array([1,2,3]);
-x.push(4);
-print(x.get());
-// print(_x.1);
-
-struct X {
-    points: int8;
-    def x() -> null {
-        print("hello");
-        print(self.points);
-    }
+struct Sigma {
+    rizzer: int8;
 }
-alloc y: X;
 
-y.points = 69;
-y.x();
+alloc sigmond: Sigma;
+sigmond.rizzer = 69;
 
+alloc jsonv: any = json.load(fs.read("sigmond.json"));
+print(jsonv.rizzer);

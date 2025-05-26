@@ -1,3 +1,4 @@
+import json
 from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
@@ -31,6 +32,30 @@ class Stdlib:
         value = args[1]
         array.append(value)
         return array
+
+    @staticmethod
+    def _file_exec(args: tuple[str, str, str | None]): # (file, mode, arg)
+        data = None
+        with open(args[0], args[1]) as f:
+            match args[1]:
+                case "w+":
+                    f.write(args[2])
+                    data = True
+                case "r":
+                    data = f.read()
+                case _:
+                    raise Exception("No such mode for file execution.")
+        return data
+
+    @staticmethod
+    def _json_exec(args: tuple[str, dict | str | None]): # (op, contents)
+        match args[0]:
+            case "dump":
+                return json.dumps(args[1])
+            case "load":
+                return json.loads(args[1])
+            case _:
+                raise Exception("Unknown operation")
 
     def __getitem__(self, item) -> Callable | None:
         try:

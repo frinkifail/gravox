@@ -37,7 +37,7 @@ class Interpreter:
         self.symbol_table: dict[str, Any] = {} # {var_name: (data_type, value, memory_address)} - for variables
         self.function_table: dict[str, FunctionDefNode] = {} # {func_name: FunctionDefNode} - for functions
         self.struct_definitions: dict[str, StructDefNode] = {
-            "Result": StructDefNode("Result", [("success", "bool"), ("value", "any")], []),
+            # "Result": StructDefNode("Result", [("success", "bool"), ("value", "any")], []),
         } # {struct_name: StructDefNode}
         self.enum_definitions: dict[str, EnumDefNode] = {} # {enum_name: EnumDefNode}
         self.memory: CappedMemoryDict[int, Any] = CappedMemoryDict(heap_size) # {memory_address: value} - simulate memory
@@ -464,6 +464,11 @@ class Interpreter:
                 else:
                     if sv["type"] == "array":
                         return sv["value"][int(field_name)]
+                    if sv["type"] == "any":
+                        try:
+                            return sv["value"][field_name]
+                        except KeyError as e:
+                            raise KeyError(f"Key not found: {e}")
                     raise Exception(f"'{struct_var_name}' is not a struct variable")
             else:
                 if enum_item := self.enum_definitions.get(struct_var_name):
