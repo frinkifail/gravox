@@ -1,4 +1,4 @@
 def debug() -> null {
     print("=== DEBUG ===");
-    print("Heap stats:", <string>gravox_heapusage() + "b/" + <string>gravox_heapsize() + "b");
+    print("Heap stats:", <string>(gravox_heapusage()) + "b/" + <string>(gravox_heapsize()) + "b");
 }

@@ -8,8 +8,12 @@ from parser import Parser
 # --- 3. Interpreter ---
 # [MOVED]
 
+interpreter = None
+ast_tree = None
+
 # --- 4. Example Execution ---
 def run_gravox_code(code, debug = False):
+    global interpreter, ast_tree
     try:
         tokens = tokenize(code)
         if debug:
@@ -23,7 +27,7 @@ def run_gravox_code(code, debug = False):
             print("\nAST Tree:")
             print(ast_tree)
 
-        interpreter = Interpreter()
+        interpreter = Interpreter(8_000_000)
         interpreter.interpret(ast_tree)
         # if debug:
         #     print("\nInterpretation Result:", result)
@@ -32,7 +36,8 @@ def run_gravox_code(code, debug = False):
     except Exception as e:
         if debug:
             raise e
-        print(f"Error: {e}")
+        assert interpreter
+        print(f"error at {interpreter.last_updated_index} ({interpreter.last_node}): {e}")
         return None
 
 if __name__ == "__main__":

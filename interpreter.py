@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from ast import EnumMemberNode, ErrResultNode, OkResultNode, StructFieldAccessNode, TypeCastNode, FunctionCallNode, \
+from grvast import EnumMemberNode, ErrResultNode, OkResultNode, StructFieldAccessNode, TypeCastNode, FunctionCallNode, \
     IdentifierNode, UnaryOpNode, BinaryOpNode, NullLiteralNode, StringLiteralNode, CharLiteralNode, FloatLiteralNode, \
     IntLiteralNode, ReturnNode, SpawnTaskNode, VarAssignNode, StructInstantiationNode, PrintStatementNode, \
     VarDeclarationNode, EnumDefNode, StructDefNode, ForLoopNode, WhileLoopNode, IfStatementNode, FunctionDefNode, \
@@ -23,7 +23,7 @@ def get_type_size(data_type): # Placeholder - needs proper size mapping.
 def execute_return(node):
     return node # Simply return the ReturnNode itself, function call execution will handle it.
 
-class CappedMemoryDict(dict):
+class CappedMemoryDict[K, V](dict):
     def __init__(self, max_items: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_items = max_items
@@ -45,6 +45,8 @@ class Interpreter:
         self.resolving_context = "normal" # figure this shit out yourself
         self.heap_size = heap_size
         self.stdlib = Stdlib(self)
+        self.last_updated_index = 0
+        self.last_node = None
 
     def allocate_memory(self, data_type): # Simple memory allocation
         address = self.next_memory_address
@@ -62,6 +64,8 @@ class Interpreter:
         return None # Or return something meaningful at the end
 
     def execute_statement(self, node):
+        self.last_updated_index += 1
+        self.last_node = node
         if isinstance(node, ProgramNode) or isinstance(node, BlockNode):
             for statement in node.statements:
                 self.execute_statement(statement)
@@ -72,7 +76,7 @@ class Interpreter:
         elif isinstance(node, VarAssignNode):
             self.execute_variable_assignment(node)
         elif isinstance(node, FunctionDefNode):
-            self.function_table[node.func_name] = node
+            self.function_table[str(node.func_name)] = node
         elif isinstance(node, FunctionCallNode):
             return self.execute_function_call(node)
         elif isinstance(node, ReturnNode):
@@ -86,7 +90,7 @@ class Interpreter:
         elif isinstance(node, StructDefNode):
             self.struct_definitions[node.struct_name] = node
             for function in node.functions:
-                self.function_table[node.struct_name + "::" + function.func_name] = function
+                self.function_table[node.struct_name + "::" + str(function.func_name)] = function
         elif isinstance(node, EnumDefNode):
             self.enum_definitions[node.enum_name] = node
         elif isinstance(node, VarDeclarationNode): # Deprecated - use AllocMemoryNode
@@ -168,11 +172,14 @@ class Interpreter:
 
     def execute_function_call(self, node: FunctionCallNode):
         func_name = node.func_name.name # Assuming func_name is now an IdentifierNode
+        # if isinstance(node.func_name, IdentifierNode):
+        #     func_name = cast(IdentifierNode, node.func_name).name
         args = [self.evaluate_expression(arg) for arg in node.args]
 
         # print(f"fnc: {func_name}({args})")
 
         if func_name not in self.function_table:
+            
             builtin = self.stdlib[func_name]
             if builtin:
                 return builtin(args)
@@ -231,7 +238,7 @@ class Interpreter:
                 return x.get("type") or x.get("data_type") or "*unknown*"
         elif isinstance(node, FunctionCallNode):
             if node.func_name in self.function_table:
-                return self.function_table[node.func_name].return_type
+                return self.function_table[str(node.func_name)].return_type
         elif isinstance(node, MethodCallNode):
             instance_type = self._get_expression_type(node.instance_expr)
             method_key = f"{instance_type}::{node.method_name}"
@@ -377,6 +384,7 @@ class Interpreter:
         elif isinstance(node, ArrayLiteralNode):
             return [self.evaluate_expression(i) for i in node.elements]
         elif isinstance(node, IdentifierNode):
+            # print("ident", node)
             var_name = node.name
             if var_name in self.symbol_table:
                 x = self.symbol_table[var_name]
@@ -448,7 +456,7 @@ class Interpreter:
             expression_value = self.evaluate_expression(node.expression)
             return self.cast_value_to_type(expression_value, node.target_type)
         elif isinstance(node, StructFieldAccessNode):
-            struct_var_name = node.struct_var_name
+            struct_var_name = str(node.struct_var_name)
             field_name = node.field_name
             if struct_var_name in self.symbol_table:
                 if (sv := self.symbol_table[struct_var_name])["type"] in self.struct_definitions:
@@ -476,8 +484,8 @@ class Interpreter:
                     # return None
                 raise Exception(f"Struct variable '{struct_var_name}' not declared")
         elif isinstance(node, ArrayIndexNode):
-            array_name: str = node.array_name
-            index = node.index_expr
+            array_name = str(node.array_name)
+            index = self.evaluate_expression(node.index_expr)
             if array_name in self.symbol_table:
                 array_value = self.symbol_table[array_name]["value"]
                 try:

@@ -2,18 +2,47 @@ struct Array {
     _: int8;
     def push(item: any) -> null {
         // print(*(self._));
+        // print("x", self._);
+        // print(gravox_dump_heap());
         _array_push(*(self._), item);
     }
-    def get() -> array {
+    def get(n: int8) -> any {
+        return _get_nth_element(self.to_array(), n);
+    }
+    def to_array() -> array {
         return *(self._);
+    }
+    def len() -> int8 {
+        return len(self.to_array());
     }
 }
 
 def Array(items: array) -> Array {
     alloc _x: array; // assign on heap
     _x = items;
-    //ThisDoesntExist("hi", &_x);
+    // ThisDoesntExist("hi", &_x);
     alloc x: Array;
+    x._ = &_x;
+    return x;
+}
+
+struct String {
+    _: int8;
+    def split(separator: string) -> array {
+        return split(self.to_string(), separator);
+    }
+    def to_string() -> string {
+        return *(self._);
+    }
+    def len() -> int8 {
+        return len(self.to_string());
+    }
+}
+
+def String(value: string) -> String {
+    alloc _x: string; // assign on heap
+    _x = value;
+    alloc x: String;
     x._ = &_x;
     return x;
 }
@@ -24,6 +53,9 @@ struct Fs {
     }
     def read(file_name: string) -> string {
         return _file_exec(file_name, "r", null);
+    }
+    def exists(path: string) -> int8 {
+        return _file_exec(path, "e", null);
     }
 }
 

@@ -122,7 +122,7 @@ BRACKETS = {
 }
 
 
-def tokenize(code):
+def tokenize(code: str) -> list[Token]:
     tokens = []
     line_num = 1
     col_num = 1

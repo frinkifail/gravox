@@ -1,17 +1,20 @@
-from ast import MethodCallNode, StructFieldAccessNode, StringLiteralNode, IdentifierNode, CharLiteralNode, \
+from json import dumps
+from typing import cast
+from grvast import ASTNode, MethodCallNode, StructFieldAccessNode, StringLiteralNode, IdentifierNode, CharLiteralNode, \
     FloatLiteralNode, IntLiteralNode, NullLiteralNode, UnaryOpNode, BinaryOpNode, SpawnTaskNode, VarAssignNode, \
     EnumDefNode, StructDefNode, TypeCastNode, ForLoopNode, WhileLoopNode, IfStatementNode, ReturnNode, FunctionCallNode, \
     FunctionDefNode, FreeMemoryNode, AllocMemoryNode, BlockNode, ProgramNode, ImportNode, TryNode, \
     ArrayLiteralNode, ArrayIndexNode
-from lexing import TokenType, DATA_TYPES
+from lexing import Token, TokenType, DATA_TYPES
 
 
 class Parser:
-    def __init__(self, tokens):
+    def __init__(self, tokens: list[Token], lsp_mode = False):
         self.tokens = tokens
         self.current_token_index = 0
+        self.lsp_mode = lsp_mode
 
-    def peek(self, offset=0):
+    def peek(self, offset=0) -> Token | None:
         index = self.current_token_index + offset
         if index < len(self.tokens):
             return self.tokens[index]
@@ -22,6 +25,8 @@ class Parser:
         if token.type == token_type:
             self.current_token_index += 1
             return token
+        if self.lsp_mode:
+            raise Exception(dumps({"fn": "consume", "expect": repr(token_type), "got": repr(token.type), "loc": {'line': token.line, 'column': token.column}}))
         raise Exception(f"Expected token type {token_type}, but got {token.type} at {token.line}:{token.column}")
 
     def consume_data_type(self):
@@ -32,6 +37,8 @@ class Parser:
         ]:
             self.consume(token.type)
             return token
+        if self.lsp_mode:
+            raise Exception(dumps({"fn": "consume_data_type", "expect": "datatype", "got": repr(token.type), "loc": {'line': token.line, 'column': token.column}}))
         raise Exception(f"Expected data type, but got {token.type} at {token.line}:{token.column}")
 
     def current_token(self):
@@ -61,6 +68,8 @@ class Parser:
 
     def parse_statement(self):
         token = self.current_token()
+        peek = self.peek(1)
+        assert peek is not None
 
         if token.type == TokenType.ALLOC:
             return self.parse_variable_declaration()
@@ -80,11 +89,11 @@ class Parser:
             return self.parse_for_loop()
         elif token.type == TokenType.RETURN:
             return self.parse_return_statement()
-        elif token.type == TokenType.IDENTIFIER and self.peek(1) and self.peek(1).type == TokenType.ASSIGN:
+        elif token.type == TokenType.IDENTIFIER and peek.type == TokenType.ASSIGN:
             return self.parse_variable_assignment()
-        elif token.type == TokenType.IDENTIFIER and self.peek(1) and self.peek(1).type == TokenType.LPAREN:
+        elif token.type == TokenType.IDENTIFIER and peek.type == TokenType.LPAREN:
             return self.parse_function_call_statement()  # Function call as a statement
-        elif token.type == TokenType.IDENTIFIER and self.peek(1) and self.peek(1).type == TokenType.DOT:
+        elif token.type == TokenType.IDENTIFIER and peek.type == TokenType.DOT:
             return self.parse_struct_field_assignment_or_access()  # For struct field assignment like vec.x = 10;
         elif token.type == TokenType.SPAWN:
             return self.parse_spawn_task()
@@ -167,17 +176,13 @@ class Parser:
 
     def parse_if_statement(self):
         self.consume(TokenType.IF)
-        self.consume(TokenType.LPAREN)
         condition = self.parse_expression()
-        self.consume(TokenType.RPAREN)
         then_block = self.parse_block()
         elif_blocks = []
         else_block = None
         while self.current_token().type == TokenType.ELIF:
             self.consume(TokenType.ELIF)
-            self.consume(TokenType.LPAREN)
             elif_condition = self.parse_expression()
-            self.consume(TokenType.RPAREN)
             elif_block = self.parse_block()
             elif_blocks.append((elif_condition, elif_block))
         if self.current_token().type == TokenType.ELSE:
@@ -187,9 +192,7 @@ class Parser:
 
     def parse_while_loop(self):
         self.consume(TokenType.WHILE)
-        self.consume(TokenType.LPAREN)
         condition = self.parse_expression()
-        self.consume(TokenType.RPAREN)
         loop_block = self.parse_block()
         return WhileLoopNode(condition, loop_block)
 
@@ -218,7 +221,7 @@ class Parser:
         fields = []
         functions = []
         while self.current_token().type != TokenType.RBRACE:
-            if self.peek().type == TokenType.DEF:
+            if (peek := self.peek()) and peek.type == TokenType.DEF:
                 functions.append(self.parse_function_definition())
             else:
                 field_name_token = self.consume(TokenType.IDENTIFIER)
@@ -381,7 +384,7 @@ class Parser:
                         args.append(self.parse_expression())
                 self.consume(TokenType.RPAREN)
                 # 'node' becomes the callee of the function call
-                node = FunctionCallNode(node, args)
+                node = FunctionCallNode(cast(IdentifierNode, node), args)
             elif self.current_token().type == TokenType.LBRACKET:
                 # Array index, e.g. [ ... ]
                 self.consume(TokenType.LBRACKET)
@@ -391,7 +394,7 @@ class Parser:
             elif self.current_token().type == TokenType.DOT:
                 # Member access for structs, e.g., .member or .method()
                 self.consume(TokenType.DOT)
-                if self.peek().type == TokenType.INT_LITERAL:
+                if (peek := self.peek()) and peek.type == TokenType.INT_LITERAL:
                     member_name_token = self.consume(TokenType.INT_LITERAL)
                 else:
                     member_name_token = self.consume(TokenType.IDENTIFIER)
@@ -439,11 +442,13 @@ class Parser:
             return NullLiteralNode()
         elif token.type == TokenType.IDENTIFIER:
             return IdentifierNode(self.consume(TokenType.IDENTIFIER).value)
-        elif token.type == TokenType.LESS_THAN and self.peek(1).type in DATA_TYPES.values():
+        elif token.type == TokenType.LESS_THAN and (peek := self.peek(1)) and peek.type in DATA_TYPES.values():
             return self.parse_type_cast()
         elif token.type == TokenType.LBRACKET:
             return self.parse_array_literal()
         else:
+            if self.lsp_mode:
+                raise Exception(dumps({"fn": "parse_atom", "expect": "unexpected", "got": repr(token.type), "loc": {'line': token.line, 'column': token.column}}))
             raise Exception(f"Unexpected token {token.type} in expression at {token.line}:{token.column}")
 
     def parse_array_literal(self):

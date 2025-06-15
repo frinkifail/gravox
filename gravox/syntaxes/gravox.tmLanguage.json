@@ -1,0 +1,57 @@
+{
+	"scopeName": "source.gravox",
+	"name": "Gravox",
+	"patterns": [
+		{
+			"name": "comment.line.double-slash.gravox",
+			"begin": "//",
+			"end": "$"
+		},
+		{
+			"name": "keyword.control.gravox",
+			"match": "\\b(import|struct|def|alloc|if|else|elif|for|while|return|break|continue|switch)\\b"
+		},
+		{
+			"name": "storage.type.gravox",
+			"match": "\\b(string|int8|Array|String|null|void)\\b"
+		},
+		{
+			"name": "constant.language.boolean.gravox",
+			"match": "\\b(true|false)\\b"
+		},
+		{
+			"name": "variable.language.gravox",
+			"match": "\\b(self|this)\\b"
+		},
+		{
+			"name": "entity.name.function.gravox",
+			"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()"
+		},
+		{
+			"name": "string.quoted.double.gravox",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.gravox",
+					"match": "\\\\."
+				}
+			]
+		},
+		{
+			"name": "constant.numeric.gravox",
+			"match": "\\b\\d+(\\.\\d+)?\\b"
+		},
+		{
+			"name": "keyword.operator.gravox",
+			"match": "(\\+|\\-|\\*|\\/|==|!=|<=|>=|<|>|=|\\.|:|;|,|\\(|\\)|\\[|\\]|\\{|\\}|\\&|\\|)"
+		}
+	],
+	"repository": {},
+	"fileTypes": [
+		"gravox"
+	],
+	"firstLineMatch": "^#!.*\\bgravox\\b",
+	"foldingStartMarker": "\\{",
+	"foldingStopMarker": "\\}"
+}

@@ -1,11 +1,2 @@
-import stdlib;
-
-struct Sigma {
-    rizzer: int8;
-}
-
-alloc sigmond: Sigma;
-sigmond.rizzer = 69;
-
-alloc jsonv: any = json.load(fs.read("sigmond.json"));
-print(jsonv.rizzer);
+// import benchmark;
+// import todo;

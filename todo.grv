@@ -1,0 +1,119 @@
+import stdlib;
+
+print(fore("cyan") + "~ Welcome to GravoxTodo!");
+print(fore("dark_gray") + "> This is a demonstration of the language's features.");
+
+struct TodoItem {
+    name: string;
+    done: int8;
+}
+
+struct GravoxTodo {
+    currentProject: string;
+}
+
+alloc t: GravoxTodo;
+t.currentProject = "default";
+alloc i: Array;
+i = Array([]);
+
+def save() -> null {
+    alloc path: string = "gravoxtodo-" + t.currentProject + ".json";
+    if fs.exists(path) == 1 {
+        print(fore("red") + "! You are about to overwrite " + t.currentProject + "! Are you sure you want to continue?");
+        alloc confirmation: string = input("[y/n]: ");
+        if confirmation != "y" {
+            print(fore("yellow") + "# Cancelled save.");
+            return null;
+        }
+    }
+    fs.write(path, json.dump(i.to_array()));
+    print(fore("green") + "# Saved.");
+}
+
+def load() -> null {
+    alloc path: string = "gravoxtodo-" + t.currentProject + ".json";
+    if fs.exists(path) == 0 {
+        print(fore("red") + "! That project doesn't exist.");
+        return null;
+    }
+    i = Array(json.load(fs.read(path)));
+}
+
+alloc running: int8 = 1;
+alloc action_log: Array;
+action_log = Array([]);
+
+load();
+
+while running == 1 {
+    alloc _action: string = input(t.currentProject + " [action] $ " + fore("green"));
+    raw_print(style("reset"));
+    alloc full: String;
+    full = String(_action);
+    alloc parts: array;
+    parts = full.split(" ");
+    alloc action: string = parts.0;
+    action_log.push("$ " + _action);
+    if action == "exit" {
+        print(fore("blue") + "# Autosaving...");
+        save();
+        print("# Exiting...");
+        running = 0;
+    } elif action == "log" {
+        action_log.push("# View action log");
+        print(fore("blue") + "# Action log");
+        for (alloc i: int8 = 0; i < action_log.len(); i = i + 1;) {
+            alloc item: string = action_log.get(i);
+            print(fore("dark_gray") + "- " + style("reset") + item);
+        }
+    } elif action == "add" {
+        alloc name: string = parts.1;
+        alloc x: TodoItem;
+        // print(name);
+        x.name = name;
+        x.done = 0;
+        // print("i", i, "&i", &i);
+        // print(x);
+        i.push(x);
+        // print(i.to_array());
+        clear_screen();
+        print(fore("green") + "# Added.");
+        action_log.push("# Add " + name + " to todo list.");
+    } elif action == "list" {
+        action_log.push("# View todo list");
+        print(fore("blue") + "# Items");
+        for (alloc ix: int8 = 0; ix < i.len(); ix = ix + 1;) {
+            alloc item: TodoItem;
+            item = i.get(ix);
+            if item.done == 1 {
+                print(fore("green") + "[" + <string>ix + "] x " + item.name);
+            } else {
+                print(fore("yellow") + "[" + <string>ix + "] - " + item.name);
+            }
+        }
+    } elif action == "done" {
+        alloc item: TodoItem;
+        item = i.get((<int8>(parts.1)));
+        item.done = 1;
+        print(fore("green") + "# Set to done.");
+        action_log.push("# Set task number " + parts.1 + " to done.");
+    } elif action == "save" {
+        save();
+    } elif action == "switch" {
+        if parts.1 == "" {
+            print(fore("red") + "! Write a project name!");
+        } else {
+            t.currentProject = parts.1;
+        }
+    } elif action == "cleartasks" {
+        print(fore("red") + "! Do you want to clear all tasks for " + t.currentProject + "?");
+        alloc confirmation: string = input("[y/n]: ");
+        if confirmation != "y" {
+            print(fore("yellow") + "# Cancelled.");
+        } else {
+            i = Array([]);
+            print(fore("green") + "# Cleared.");
+        }
+    }
+}
