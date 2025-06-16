@@ -98,8 +98,8 @@ class GravoxSemanticAnalyzer:
         # Return a default type for expressions
         return self.builtin_types.get('null', GravoxType(TypeKind.PRIMITIVE, 'null'))
     
-    def visit_AllocStatement(self, node: Any) -> None:
-        """Handle 'alloc variable: type = value' statements"""
+    def visit_LetStatement(self, node: Any) -> None:
+        """Handle 'let variable: type = value' statements"""
         # Check if variable already exists in current scope
         if node.name in self.current_scope.symbols:
             self.add_error(f"Variable '{node.name}' already declared", node.location)

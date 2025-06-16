@@ -3,7 +3,7 @@ from typing import cast
 from grvast import ASTNode, MethodCallNode, StructFieldAccessNode, StringLiteralNode, IdentifierNode, CharLiteralNode, \
     FloatLiteralNode, IntLiteralNode, NullLiteralNode, UnaryOpNode, BinaryOpNode, SpawnTaskNode, VarAssignNode, \
     EnumDefNode, StructDefNode, TypeCastNode, ForLoopNode, WhileLoopNode, IfStatementNode, ReturnNode, FunctionCallNode, \
-    FunctionDefNode, FreeMemoryNode, AllocMemoryNode, BlockNode, ProgramNode, ImportNode, TryNode, \
+    FunctionDefNode, FreeMemoryNode, LetMemoryNode, BlockNode, ProgramNode, ImportNode, TryNode, \
     ArrayLiteralNode, ArrayIndexNode
 from lexing import Token, TokenType, DATA_TYPES
 
@@ -71,7 +71,7 @@ class Parser:
         peek = self.peek(1)
         assert peek is not None
 
-        if token.type == TokenType.ALLOC:
+        if token.type == TokenType.LET:
             return self.parse_variable_declaration()
         elif token.type == TokenType.FREE:
             return self.parse_memory_free()
@@ -117,7 +117,7 @@ class Parser:
         return TryNode(try_block, catch_block)
 
     def parse_variable_declaration(self):
-        self.consume(TokenType.ALLOC)
+        self.consume(TokenType.LET)
         var_name_token = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.COLON)
         data_type_token = self.consume_data_type()
@@ -126,7 +126,7 @@ class Parser:
             self.consume(TokenType.ASSIGN)
             value_expr = self.parse_expression()
         self.consume(TokenType.SEMICOLON)
-        return AllocMemoryNode(var_name_token.value, data_type_token.value, value_expr)
+        return LetMemoryNode(var_name_token.value, data_type_token.value, value_expr)
 
     def parse_memory_free(self):
         self.consume(TokenType.FREE)

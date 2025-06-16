@@ -56,7 +56,7 @@ class Stdlib:
         except Exception as e:
             print(f"info: {value} -> {array}")
             print("tip: you might be trying to create an array using inline assignment\n"
-                  "tip: (e.g. 'alloc x = Array([...]);')\n"
+                  "tip: (e.g. 'let x = Array([...]);')\n"
                   "tip: This is not supported. Create the array on a different line instead.")
             raise e
         return array

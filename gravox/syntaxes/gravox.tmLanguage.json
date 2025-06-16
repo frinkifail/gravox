@@ -9,7 +9,7 @@
 		},
 		{
 			"name": "keyword.control.gravox",
-			"match": "\\b(import|struct|def|alloc|if|else|elif|for|while|return|break|continue|switch)\\b"
+			"match": "\\b(import|struct|def|let|if|else|elif|for|while|return|break|continue|switch)\\b"
 		},
 		{
 			"name": "storage.type.gravox",

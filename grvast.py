@@ -227,7 +227,7 @@ class StructDefNode(ASTNode):
         return f'<StructDefNode name={self.struct_name}, fields={self.fields} functions={self.functions}>'
 
 
-class StructInstantiationNode(ASTNode):  # alloc struct_var : StructName;
+class StructInstantiationNode(ASTNode):  # let struct_var : StructName;
     def __init__(self, var_name: str, struct_type: str) -> None:
         self.var_name = var_name
         self.struct_type = struct_type
@@ -288,14 +288,14 @@ class ErrResultNode(ASTNode):  # Err(ErrorCode.DivisionByZero)
         return f'<ErrResultNode error={self.error_expr}>'
 
 
-class AllocMemoryNode(ASTNode):  # alloc var : int32 = 128;
+class LetMemoryNode(ASTNode):  # let var : int32 = 128;
     def __init__(self, var_name: str, data_type: str, value_expr: ASTNode | None = None) -> None:
         self.var_name = var_name
         self.data_type = data_type
         self.value_expr = value_expr
 
     def __repr__(self) -> str:
-        return f'<AllocMemoryNode name={self.var_name}, type={self.data_type}, value={self.value_expr}>'
+        return f'<LetMemoryNode name={self.var_name}, type={self.data_type}, value={self.value_expr}>'
 
 
 class FreeMemoryNode(ASTNode):  # free var;

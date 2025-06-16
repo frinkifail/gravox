@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from grvast import ASTNode, AllocMemoryNode, ArrayIndexNode, ArrayLiteralNode, BlockNode, CharLiteralNode, EnumMemberNode, FloatLiteralNode, FunctionCallNode, IdentifierNode, IntLiteralNode, MethodCallNode, NullLiteralNode, ProgramNode, StringLiteralNode, StructFieldAccessNode, TypeCastNode, UnaryOpNode
+from grvast import ASTNode, LetMemoryNode, ArrayIndexNode, ArrayLiteralNode, BlockNode, CharLiteralNode, EnumMemberNode, FloatLiteralNode, FunctionCallNode, FunctionDefNode, IdentifierNode, IntLiteralNode, MethodCallNode, NullLiteralNode, ProgramNode, StringLiteralNode, StructFieldAccessNode, TypeCastNode, UnaryOpNode
 from lsp.newlsp.coredata import RuntimeContext
 # from lsp.newlsp.coredata import AnySymbolData
 if TYPE_CHECKING:
@@ -10,6 +10,9 @@ class StaticAnalyser:
         self.program = program
         self.ls = lsp
         self.filename = filename
+
+        if filename not in self.ls.data_table:
+            self.ls.data_table[filename] = RuntimeContext()
 
     def eval_expression(self, node: ASTNode) -> str: # type
         if isinstance(node, IntLiteralNode):
@@ -149,14 +152,17 @@ class StaticAnalyser:
         if isinstance(node, ProgramNode) or isinstance(node, BlockNode):
             for i in node.statements:
                 self.eval_statement(i)
-        elif isinstance(node, AllocMemoryNode):
+        elif isinstance(node, LetMemoryNode):
             et = self.eval_variable(node)
             self.ls.data_table[self.filename].symbols[node.var_name] = RuntimeContext.Symbol(node.var_name, RuntimeContext.Symbol.SymbolKind.VARIABLE, RuntimeContext.VariableSymbolData(f"{et} [defined as: {node.data_type}]"))
+            # self.ls.show_message_log(self.ls.data_table)
             # self.ls.show_message("i commit war crimes")
+        elif isinstance(node, FunctionDefNode):
+            self.ls.data_table[self.filename].symbols[str(node.func_name)] = RuntimeContext.Symbol(str(node.func_name), RuntimeContext.Symbol.SymbolKind.FUNCTION, RuntimeContext.FunctionSymbolData(dict(node.params), str(node.return_type)))
         else:
             self.eval_expression(node)
     
-    def eval_variable(self, node: AllocMemoryNode):
+    def eval_variable(self, node: LetMemoryNode):
         return "unknown"
 
     def eval_function_call(self, node: FunctionCallNode):

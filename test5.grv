@@ -1,6 +1,6 @@
 import stdlib;
 
-alloc x: Array;
+let x: Array;
 x = Array([1,2,3]);
 x.push(4);
 print(x.get());
@@ -13,7 +13,7 @@ struct X {
         print(self.points);
     }
 }
-alloc y: X;
+let y: X;
 
 y.points = 69;
 y.x();

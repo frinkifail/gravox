@@ -1,3 +1,4 @@
 __pycache__
 .venv
 benchmark*
+.DS_Store

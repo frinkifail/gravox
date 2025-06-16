@@ -157,7 +157,7 @@ class GravoxLanguageProcessor:
     def _get_keyword_completions(self) -> list[CompletionItem]:
         """Basic keyword completions"""
         keywords: list[str] = [
-            'alloc', 'def', 'struct', 'if', 'elif', 'else', 
+            'let', 'def', 'struct', 'if', 'elif', 'else', 
             'while', 'for', 'return', 'import', 'null'
         ]
         

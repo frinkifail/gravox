@@ -18,10 +18,10 @@ struct Array {
 }
 
 def Array(items: array) -> Array {
-    alloc _x: array; // assign on heap
+    let _x: array; // assign on heap
     _x = items;
     // ThisDoesntExist("hi", &_x);
-    alloc x: Array;
+    let x: Array;
     x._ = &_x;
     return x;
 }
@@ -40,9 +40,9 @@ struct String {
 }
 
 def String(value: string) -> String {
-    alloc _x: string; // assign on heap
+    let _x: string; // assign on heap
     _x = value;
-    alloc x: String;
+    let x: String;
     x._ = &_x;
     return x;
 }
@@ -68,5 +68,5 @@ struct Json {
     }
 }
 
-alloc fs: Fs;
-alloc json: Json;
+let fs: Fs;
+let json: Json;

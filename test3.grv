@@ -10,7 +10,7 @@ struct Player {
 }
 
 def create_player(name: string, team: Team) -> Player {
-    alloc p: Player;
+    let p: Player;
     p.name = name;
     p.score = 0;
     p.team = team;
@@ -34,11 +34,11 @@ def print_score(p: Player) -> null {
 
 // temporarily disabled print's pretty printing, standard library was moved.
 
-alloc p1: Player;
+let p1: Player;
 p1 = create_player("Alice", Team.RED);
-alloc p2: Player;
+let p2: Player;
 p2 = create_player("Bob", Team.BLUE);
-alloc p3: Player = create_player("Charlie", Team.RED);
+let p3: Player = create_player("Charlie", Team.RED);
 
 print_score(p1);
 print_score(p2);

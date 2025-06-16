@@ -5,7 +5,7 @@ from grvast import EnumMemberNode, ErrResultNode, OkResultNode, StructFieldAcces
     IdentifierNode, UnaryOpNode, BinaryOpNode, NullLiteralNode, StringLiteralNode, CharLiteralNode, FloatLiteralNode, \
     IntLiteralNode, ReturnNode, SpawnTaskNode, VarAssignNode, StructInstantiationNode, PrintStatementNode, \
     VarDeclarationNode, EnumDefNode, StructDefNode, ForLoopNode, WhileLoopNode, IfStatementNode, FunctionDefNode, \
-    FreeMemoryNode, AllocMemoryNode, BlockNode, ProgramNode, ImportNode, TryNode, ArrayLiteralNode, ArrayIndexNode, \
+    FreeMemoryNode, LetMemoryNode, BlockNode, ProgramNode, ImportNode, TryNode, ArrayLiteralNode, ArrayIndexNode, \
     MethodCallNode
 from lexing import TokenType, tokenize
 from parser import Parser
@@ -48,10 +48,10 @@ class Interpreter:
         self.last_updated_index = 0
         self.last_node = None
 
-    def allocate_memory(self, data_type): # Simple memory allocation
+    def letate_memory(self, data_type): # Simple memory letation
         address = self.next_memory_address
         size = get_type_size(data_type) # Placeholder for size calculation
-        self.next_memory_address += size # Increment for next allocation. In real scenario, more sophisticated approach
+        self.next_memory_address += size # Increment for next letation. In real scenario, more sophisticated approach
         return address
 
     def free_memory(self, address): # Simple free - for now just remove from memory dict if needed. More complex in real
@@ -69,8 +69,8 @@ class Interpreter:
         if isinstance(node, ProgramNode) or isinstance(node, BlockNode):
             for statement in node.statements:
                 self.execute_statement(statement)
-        elif isinstance(node, AllocMemoryNode):
-            self.execute_alloc_memory(node)
+        elif isinstance(node, LetMemoryNode):
+            self.execute_let_memory(node)
         elif isinstance(node, FreeMemoryNode):
             self.execute_free_memory(node)
         elif isinstance(node, VarAssignNode):
@@ -93,12 +93,12 @@ class Interpreter:
                 self.function_table[node.struct_name + "::" + str(function.func_name)] = function
         elif isinstance(node, EnumDefNode):
             self.enum_definitions[node.enum_name] = node
-        elif isinstance(node, VarDeclarationNode): # Deprecated - use AllocMemoryNode
+        elif isinstance(node, VarDeclarationNode): # Deprecated - use LetMemoryNode
             self.execute_variable_declaration(node)
         elif isinstance(node, PrintStatementNode):
             self.execute_print_statement(node)
-        elif isinstance(node, StructInstantiationNode): # Not directly executable, handled by AllocMemoryNode if struct type
-            pass # Handled in execute_alloc_memory when type is struct
+        elif isinstance(node, StructInstantiationNode): # Not directly executable, handled by LetMemoryNode if struct type
+            pass # Handled in execute_let_memory when type is struct
         elif isinstance(node, VarAssignNode): # already handled above, check again
             self.execute_variable_assignment(node)
         elif isinstance(node, SpawnTaskNode):
@@ -155,7 +155,7 @@ class Interpreter:
         for i, param in enumerate(func_def.params):
             param_name, param_type = param
             typed_arg_value = self.cast_value_to_type(args[i], param_type)
-            self.symbol_table[param_name] = {"type": param_type, "value": typed_arg_value, "address": self.allocate_memory(param_type)}
+            self.symbol_table[param_name] = {"type": param_type, "value": typed_arg_value, "address": self.letate_memory(param_type)}
 
         # Execute the body
         return_value = None
@@ -188,12 +188,12 @@ class Interpreter:
         func_def = self.function_table[func_name]
         return self._execute_callable(func_def, args)
 
-    def execute_alloc_memory(self, node):
+    def execute_let_memory(self, node):
         var_name = node.var_name
         data_type = node.data_type
-        memory_address = self.allocate_memory(data_type)
+        memory_address = self.letate_memory(data_type)
 
-        if data_type in self.struct_definitions: # Struct allocation
+        if data_type in self.struct_definitions: # Struct letation
             struct_def = self.struct_definitions[data_type]
             struct_instance = {}
             for field_name, field_type in struct_def.fields:
@@ -222,9 +222,9 @@ class Interpreter:
         data_type = node.data_type
         initial_value = self.evaluate_expression(node.value_expr) if node.value_expr else self.get_default_value_for_type(data_type)
 
-        # Create symbol table entry with memory allocation
+        # Create symbol table entry with memory letation
         self.symbol_table[var_name] = {"type": data_type, "value": initial_value, "address": self.next_memory_address}
-        self.allocate_memory(data_type)
+        self.letate_memory(data_type)
 
         # If there's an initial value, use the same assignment logic as regular assignments
         if node.value_expr:
@@ -317,7 +317,7 @@ class Interpreter:
     #         param_name, param_type = param
     #         typed_arg_value = self.cast_value_to_type(args[i], param_type) # Type check/cast arguments against parameters
     #         self.symbol_table[param_name] = {"type": param_type, "value": typed_arg_value, "address": self.next_memory_address}
-    #         self.allocate_memory(param_type)
+    #         self.letate_memory(param_type)
     #
     #     # Execute function body
     #     return_value = None
@@ -352,7 +352,7 @@ class Interpreter:
 
     def execute_for_loop(self, node):
         # self.symbol_table["i"] = {"type": "int32", "value": 0, "address": self.next_memory_address}
-        # self.allocate_memory("int32")
+        # self.letate_memory("int32")
         self.execute_statement(node.init_stmt) # Initialization statement
         # print("st", self.symbol_table)
         while self.evaluate_expression(node.condition_expr): # Condition

@@ -4,8 +4,8 @@ struct Sigma {
     rizzer: int8;
 }
 
-alloc sigmond: Sigma;
+let sigmond: Sigma;
 sigmond.rizzer = 69;
 
-alloc jsonv: any = json.load(fs.read("sigmond.json"));
+let jsonv: any = json.load(fs.read("sigmond.json"));
 print(jsonv.rizzer);

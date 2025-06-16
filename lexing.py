@@ -4,7 +4,7 @@ from enum import Enum
 
 class TokenType(Enum):
     # Keywords
-    ALLOC = "ALLOC"
+    LET = "LET"
     FREE = "FREE"
     DEF = "DEF"
     STRUCT = "STRUCT"
@@ -99,7 +99,7 @@ DATA_TYPES = {
     "string": TokenType.STRING, "array": TokenType.ARRAY,
 }
 KEYWORDS = {
-    "alloc": TokenType.ALLOC, "free": TokenType.FREE, "def": TokenType.DEF, "struct": TokenType.STRUCT,
+    "let": TokenType.LET, "free": TokenType.FREE, "def": TokenType.DEF, "struct": TokenType.STRUCT,
     "if": TokenType.IF, "else": TokenType.ELSE, "elif": TokenType.ELIF, "while": TokenType.WHILE, "for": TokenType.FOR,
     "return": TokenType.RETURN, "enum": TokenType.ENUM, "Ok": TokenType.OK, "Err": TokenType.ERR,
     "spawn": TokenType.SPAWN,
