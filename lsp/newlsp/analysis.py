@@ -1,6 +1,11 @@
-from typing import TYPE_CHECKING
-from grvast import ASTNode, LetMemoryNode, ArrayIndexNode, ArrayLiteralNode, BlockNode, CharLiteralNode, EnumMemberNode, FloatLiteralNode, FunctionCallNode, FunctionDefNode, IdentifierNode, IntLiteralNode, MethodCallNode, NullLiteralNode, ProgramNode, StringLiteralNode, StructFieldAccessNode, TypeCastNode, UnaryOpNode
-from lsp.newlsp.coredata import RuntimeContext
+from pathlib import Path
+from typing import TYPE_CHECKING, cast
+from grvast import ASTNode, ForLoopNode, IfStatementNode, ImportNode, LetMemoryNode, ArrayIndexNode, ArrayLiteralNode, BlockNode, CharLiteralNode, EnumMemberNode, FloatLiteralNode, FunctionCallNode, FunctionDefNode, IdentifierNode, IntLiteralNode, MethodCallNode, NullLiteralNode, ProgramNode, StringLiteralNode, StructDefNode, StructFieldAccessNode, TryNode, TypeCastNode, UnaryOpNode, WhileLoopNode
+from lexing import tokenize
+from lsp.newlsp.coredata import RuntimeContext, single_range
+from lsprotocol.types import Diagnostic
+
+from parser import Parser
 # from lsp.newlsp.coredata import AnySymbolData
 if TYPE_CHECKING:
     from lsp.newlsp.lsp import NewLSP
@@ -10,6 +15,7 @@ class StaticAnalyser:
         self.program = program
         self.ls = lsp
         self.filename = filename
+        self.diagnostics: list[Diagnostic] = []
 
         if filename not in self.ls.data_table:
             self.ls.data_table[filename] = RuntimeContext()
@@ -31,7 +37,7 @@ class StaticAnalyser:
             # return [self.eval_expression(i) for i in node.elements]
         elif isinstance(node, IdentifierNode):
             # print("ident", node)
-            raise NotImplementedError("TBA") # TODO
+            pass # NOTE: no type inference
             # var_name = node.name
             # if var_name in self.symbol_table:
             #     x = self.symbol_table[var_name]
@@ -47,7 +53,7 @@ class StaticAnalyser:
             # else:
             #     raise Exception(f"Variable '{var_name}' not declared")
         elif isinstance(node, UnaryOpNode):
-            raise NotImplementedError("TBA")
+            pass # NOTE: no type inference
             # value = self.eval_expression(node.expr)
             # op_type = node.op
             # if op_type == TokenType.MINUS: return -value
@@ -73,16 +79,25 @@ class StaticAnalyser:
             #         raise Exception("Pointer reference '&' can only be applied to variables")
 
         elif isinstance(node, FunctionCallNode):
-            # TODO
-            return self.eval_function_call(node)
+            pass
         elif isinstance(node, TypeCastNode):
-            expression_value = self.eval_expression(node.expression)
-            return self.check_valid_cast(expression_value, node.target_type)
+            pass
         elif isinstance(node, StructFieldAccessNode):
-            raise NotImplementedError("TBA")
-            # struct_var_name = str(node.struct_var_name)
-            # field_name = node.field_name
-            # if struct_var_name in self.symbol_table:
+            # raise NotImplementedError("TBA")
+            struct_var_name = str(node.struct_var_name)
+            field_name = node.field_name
+            if (x := self.get_symbol_maybe(struct_var_name)):
+                if x.kind != x.SymbolKind.VARIABLE:
+                    return "unknown(...) -> unknown | unknown"
+                d = cast(RuntimeContext.VariableSymbolData, x.data)
+                struct = self.get_symbol_maybe(d.type)
+                if not struct:
+                    return "##undefined##"
+                if struct.kind != x.SymbolKind.STRUCT:
+                    return "##undefined##"
+                sd = cast(RuntimeContext.StructSymbolData, struct.data)
+                
+                    
             #     if (sv := self.symbol_table[struct_var_name])["type"] in self.struct_definitions:
             #         struct_instance = self.symbol_table[struct_var_name]["value"]
             #         if field_name in struct_instance:
@@ -131,7 +146,7 @@ class StaticAnalyser:
         elif isinstance(node, EnumMemberNode): # Referencing enum member value - for now return string name itself.
             return node.enum_name # Could be improved to store enum values if needed
         elif isinstance(node, MethodCallNode):
-            raise NotImplementedError("TBA") # TODO
+            pass # TODO
             # instance_type = self._get_expression_type(node.instance_expr)
             # instance_value = self.eval_expression(node.instance_expr)
 
@@ -147,26 +162,62 @@ class StaticAnalyser:
             # return self._execute_callable(method_def, args, self_instance=self_context)
 
         return "unknown"
+
+    def get_symbol_maybe(self, name: str):
+        return self.ls.data_table[self.filename].symbols.get(name)
+
+    def get_symbol(self, name: str):
+        x = self.get_symbol_maybe(name)
+        if not x:
+            raise KeyError(f"'{name}'")
+        return x
+
+    def set_symbol(self, name: str, symbol: RuntimeContext.Symbol):
+        self.ls.data_table[self.filename].symbols[name] = symbol
+        return symbol
     
     def eval_statement(self, node: ASTNode):
         if isinstance(node, ProgramNode) or isinstance(node, BlockNode):
             for i in node.statements:
                 self.eval_statement(i)
+        elif isinstance(node, ImportNode):
+            path = Path(node.module_name + ".grv")
+            if not path.exists():
+                raise Exception(f"Module '{node.module_name}' not found")
+            with open(path, 'r') as f:
+                source_code = f.read()
+            parser = Parser(tokenize(source_code))
+            program_node = parser.parse_program()
+            self.eval_statement(program_node)
         elif isinstance(node, LetMemoryNode):
-            et = self.eval_variable(node)
-            self.ls.data_table[self.filename].symbols[node.var_name] = RuntimeContext.Symbol(node.var_name, RuntimeContext.Symbol.SymbolKind.VARIABLE, RuntimeContext.VariableSymbolData(f"{et} [defined as: {node.data_type}]"))
+            # et = self.eval_variable(node)
+            self.set_symbol(node.var_name, RuntimeContext.Symbol(node.var_name, RuntimeContext.Symbol.SymbolKind.VARIABLE, RuntimeContext.VariableSymbolData(f"{node.data_type}")))
             # self.ls.show_message_log(self.ls.data_table)
             # self.ls.show_message("i commit war crimes")
         elif isinstance(node, FunctionDefNode):
-            self.ls.data_table[self.filename].symbols[str(node.func_name)] = RuntimeContext.Symbol(str(node.func_name), RuntimeContext.Symbol.SymbolKind.FUNCTION, RuntimeContext.FunctionSymbolData(dict(node.params), str(node.return_type)))
+            self.set_symbol(str(node.func_name), RuntimeContext.Symbol(str(node.func_name), RuntimeContext.Symbol.SymbolKind.FUNCTION, RuntimeContext.FunctionSymbolData(dict(node.params), str(node.return_type))))
+            self.eval_statement(node.body)
+        elif isinstance(node, StructDefNode):
+            self.set_symbol(node.struct_name, RuntimeContext.Symbol(node.struct_name, RuntimeContext.Symbol.SymbolKind.STRUCT, RuntimeContext.StructSymbolData(dict(node.fields), dict([(str(i.func_name), RuntimeContext.FunctionSymbolData(dict(i.params), str(i.return_type))) for i in node.functions]))))
+        elif isinstance(node, WhileLoopNode):
+            self.eval_statement(node.loop_block)
+        elif isinstance(node, TryNode):
+            self.eval_statement(node.try_block)
+            if node.catch_block: self.eval_statement(node.catch_block)
+        elif isinstance(node, IfStatementNode):
+            self.eval_statement(node.then_block)
+            for i in node.elif_blocks:
+                if isinstance(i, tuple):
+                    for j in i:
+                        self.eval_statement(j)
+                else:
+                    self.eval_statement(i)
+            if node.else_block: self.eval_statement(node.else_block)
+        elif isinstance(node, ForLoopNode):
+            self.eval_statement(node.init_stmt)
+            self.eval_statement(node.loop_block)
         else:
             self.eval_expression(node)
     
-    def eval_variable(self, node: LetMemoryNode):
-        return "unknown"
-
-    def eval_function_call(self, node: FunctionCallNode):
-        return "unknown"
-
-    def check_valid_cast(self, type1: str, type2: str) -> str:
-        return "invalid"
+    # def eval_variable(self, node: LetMemoryNode):
+    #     return "unknown"

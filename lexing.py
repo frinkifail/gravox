@@ -1,5 +1,6 @@
 # --- 1. Lexer ---
 from enum import Enum
+from json import dumps
 
 
 class TokenType(Enum):
@@ -122,7 +123,7 @@ BRACKETS = {
 }
 
 
-def tokenize(code: str) -> list[Token]:
+def tokenize(code: str, lsp_mode = False) -> list[Token]:
     tokens = []
     line_num = 1
     col_num = 1
@@ -181,6 +182,8 @@ def tokenize(code: str) -> list[Token]:
                 col_num += len(string_val) + 2  # +2 for the double quotes
                 continue
             else:
+                if lsp_mode:
+                    raise Exception(dumps({"cause": "string", "loc": {"line": line_num, "column": col_num}}))
                 raise Exception(f"Unterminated string literal starting at {line_num}:{col_num}")
 
         # Identifiers and Keywords
@@ -224,7 +227,9 @@ def tokenize(code: str) -> list[Token]:
             i += 1
             col_num += 1
             continue
-
+        
+        if lsp_mode:
+            raise Exception(dumps({"cause": "unexpect", "char": char, "loc": {"line": line_num, "column": col_num}}))
         raise Exception(f"Unexpected character '{char}' at {line_num}:{col_num}")
     tokens.append(Token(TokenType.EOF, None, line_num, col_num))
     return tokens

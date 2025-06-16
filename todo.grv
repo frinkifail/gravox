@@ -15,6 +15,7 @@ struct GravoxTodo {
 let t: GravoxTodo;
 t.currentProject = "default";
 let i: Array;
+
 i = Array([]);
 
 def save() -> null {
