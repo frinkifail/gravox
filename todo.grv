@@ -64,8 +64,8 @@ while running == 1 {
     } elif action == "log" {
         action_log.push("# View action log");
         print(fore("blue") + "# Action log");
-        for (let i: int8 = 0; i < action_log.len(); i = i + 1;) {
-            let item: string = action_log.get(i);
+        for (let ix: int8 = 0; ix < action_log.len(); ix = ix + 1;) {
+            let item: string = action_log.get(ix);
             print(fore("dark_gray") + "- " + style("reset") + item);
         }
     } elif action == "add" {

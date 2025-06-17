@@ -1,4 +1,4 @@
-struct Array {
+struct ArrayType {
     _: int8;
     def push(item: any) -> null {
         // print(*(self._));
@@ -17,16 +17,16 @@ struct Array {
     }
 }
 
-def Array(items: array) -> Array {
+def Array(items: array) -> ArrayType {
     let _x: array; // assign on heap
     _x = items;
     // ThisDoesntExist("hi", &_x);
-    let x: Array;
+    let x: ArrayType;
     x._ = &_x;
     return x;
 }
 
-struct String {
+struct StringType {
     _: int8;
     def split(separator: string) -> array {
         return split(self.to_string(), separator);
@@ -39,10 +39,10 @@ struct String {
     }
 }
 
-def String(value: string) -> String {
+def String(value: string) -> StringType {
     let _x: string; // assign on heap
     _x = value;
-    let x: String;
+    let x: StringType;
     x._ = &_x;
     return x;
 }

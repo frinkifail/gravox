@@ -12,8 +12,8 @@ def main() -> null {
 	// player.points = "test"; // WORKS NVM IT DOESNT ANYMORE
 	// player.points += 1; DOESN'T WORK SYNTAX ERROR
 	// player.points = player.points + 1; SYNTAX ERROR
-	let x: int8;
-	// x = "hi"; DOESN'T WORK - TYPE ERROR - CAN'T CAST STRING TO INT
+	let z: int8;
+	z = "hi";
 	// print(x);
 	struct Test {
 	    x: int8;

@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
-from grvast import ASTNode, ForLoopNode, IfStatementNode, ImportNode, LetMemoryNode, ArrayIndexNode, ArrayLiteralNode, BlockNode, CharLiteralNode, EnumMemberNode, FloatLiteralNode, FunctionCallNode, FunctionDefNode, IdentifierNode, IntLiteralNode, MethodCallNode, NullLiteralNode, ProgramNode, StringLiteralNode, StructDefNode, StructFieldAccessNode, TryNode, TypeCastNode, UnaryOpNode, WhileLoopNode
+from grvast import ASTNode, ForLoopNode, IfStatementNode, ImportNode, LetMemoryNode, ArrayIndexNode, ArrayLiteralNode, BlockNode, CharLiteralNode, EnumMemberNode, FloatLiteralNode, FunctionCallNode, FunctionDefNode, IdentifierNode, IntLiteralNode, MethodCallNode, NullLiteralNode, ProgramNode, StringLiteralNode, StructDefNode, StructFieldAccessNode, TryNode, TypeCastNode, UnaryOpNode, VarAssignNode, WhileLoopNode
 from lexing import tokenize
 from lsp.newlsp.coredata import RuntimeContext, single_range
-from lsprotocol.types import Diagnostic
+from lsprotocol.types import Diagnostic, Position
 
 from parser import Parser
 # from lsp.newlsp.coredata import AnySymbolData
@@ -34,94 +34,10 @@ class StaticAnalyser:
             return "null"
         elif isinstance(node, ArrayLiteralNode):
             return "array<unknown>"
-            # return [self.eval_expression(i) for i in node.elements]
         elif isinstance(node, IdentifierNode):
-            # print("ident", node)
-            pass # NOTE: no type inference
-            # var_name = node.name
-            # if var_name in self.symbol_table:
-            #     x = self.symbol_table[var_name]
-            #     # print(self.resolving_context, type(x["value"]))
-            #     if isinstance(x["value"], dict) and self.resolving_context == "pretty":
-            #         self.resolving_context = "normal"
-            #         x = f"{x.get('data_type') or '*unknown*'} {{ {", ".join([f'{k}: {v if v is not None else 'null'}' for k, v in x['value'].items()])} }}"
-            #         # print("pretty", x)
-            #         return x
-            #     return x["value"]
-            # elif var_name in self.enum_definitions: # Check if identifier is an enum
-            #     return var_name # Return enum name itself for now
-            # else:
-            #     raise Exception(f"Variable '{var_name}' not declared")
+            pass # TODO
         elif isinstance(node, UnaryOpNode):
-            pass # NOTE: no type inference
-            # value = self.eval_expression(node.expr)
-            # op_type = node.op
-            # if op_type == TokenType.MINUS: return -value
-            # elif op_type == TokenType.BIT_NOT: return ~value # Bitwise NOT
-            # elif op_type == TokenType.POINTER_DEREF: # *ptr
-            #     if isinstance(value, int): # Address should be an integer address
-            #         if value in self.memory:
-            #             return self.memory[value] # Dereference memory address
-            #         else:
-            #             raise Exception(f"Invalid memory access at address {value}")
-            #     else:
-            #         raise Exception("Pointer dereference expects a memory address (integer)")
-            # elif op_type == TokenType.POINTER_REF: # &var
-            #     if isinstance(node.expr, IdentifierNode):
-            #         var_name = node.expr.name
-            #         # print("pointer")
-            #         if var_name in self.symbol_table:
-            #             # print(var_name, self.symbol_table[var_name])
-            #             return self.symbol_table[var_name]["address"] # Return memory address of variable
-            #         else:
-            #             raise Exception(f"Variable '{var_name}' not declared")
-            #     else:
-            #         raise Exception("Pointer reference '&' can only be applied to variables")
-
-        elif isinstance(node, FunctionCallNode):
-            pass
-        elif isinstance(node, TypeCastNode):
-            pass
-        elif isinstance(node, StructFieldAccessNode):
-            # raise NotImplementedError("TBA")
-            struct_var_name = str(node.struct_var_name)
-            field_name = node.field_name
-            if (x := self.get_symbol_maybe(struct_var_name)):
-                if x.kind != x.SymbolKind.VARIABLE:
-                    return "unknown(...) -> unknown | unknown"
-                d = cast(RuntimeContext.VariableSymbolData, x.data)
-                struct = self.get_symbol_maybe(d.type)
-                if not struct:
-                    return "##undefined##"
-                if struct.kind != x.SymbolKind.STRUCT:
-                    return "##undefined##"
-                sd = cast(RuntimeContext.StructSymbolData, struct.data)
-                
-                    
-            #     if (sv := self.symbol_table[struct_var_name])["type"] in self.struct_definitions:
-            #         struct_instance = self.symbol_table[struct_var_name]["value"]
-            #         if field_name in struct_instance:
-            #             # print(struct_instance)
-            #             try:
-            #                 return struct_instance[field_name]
-            #             except Exception as e:
-            #                 print(self.symbol_table[struct_var_name], struct_instance, e)
-            #         else:
-            #             raise Exception(f"Struct '{self.symbol_table[struct_var_name]['type']}' does not have field '{field_name}'")
-            #     else:
-            #         if sv["type"] == "array":
-            #             return sv["value"][int(field_name)]
-            #         if sv["type"] == "any":
-            #             try:
-            #                 return sv["value"][field_name]
-            #             except KeyError as e:
-            #                 raise KeyError(f"Key not found: {e}")
-            #         raise Exception(f"'{struct_var_name}' is not a struct variable")
-            # else:
-            #     if enum_item := self.enum_definitions.get(struct_var_name):
-            #         return next(filter(lambda y: y == field_name, enum_item.members))
-            #         # return None
-            #     raise Exception(f"Struct variable '{struct_var_name}' not declared")
+            pass # TODO
         elif isinstance(node, ArrayIndexNode):
             raise NotImplementedError("TBA") # TODO
             # array_name = str(node.array_name)
@@ -147,19 +63,6 @@ class StaticAnalyser:
             return node.enum_name # Could be improved to store enum values if needed
         elif isinstance(node, MethodCallNode):
             pass # TODO
-            # instance_type = self._get_expression_type(node.instance_expr)
-            # instance_value = self.eval_expression(node.instance_expr)
-
-            # method_key = f"{instance_type}::{node.method_name}"
-            # if method_key not in self.function_table:
-            #     # print(self.function_table)
-            #     raise Exception(f"Method '{node.method_name}' not found for type '{instance_type}'")
-
-            # method_def = self.function_table[method_key]
-            # args = [self.eval_expression(arg) for arg in node.args]
-
-            # self_context = {"type": instance_type, "value": instance_value, "address": -1} # address is tricky here
-            # return self._execute_callable(method_def, args, self_instance=self_context)
 
         return "unknown"
 
@@ -216,6 +119,19 @@ class StaticAnalyser:
         elif isinstance(node, ForLoopNode):
             self.eval_statement(node.init_stmt)
             self.eval_statement(node.loop_block)
+        elif isinstance(node, VarAssignNode):
+            valtype = self.eval_expression(node.value_expr)
+            var = self.get_symbol_maybe(node.var_name)
+            if not var:
+                self.diagnostics.append(Diagnostic(single_range(Position(node.line, node.column)), f"undefined variable '{node.var_name}'"))
+                return
+            if var.kind != var.SymbolKind.VARIABLE:
+                self.diagnostics.append(Diagnostic(single_range(Position(node.line, node.column)), f"assigning to a non-variable '{node.var_name}'"))
+                return
+            vardata = cast(RuntimeContext.VariableSymbolData, var.data)
+            if valtype != vardata.type:
+                self.diagnostics.append(Diagnostic(single_range(Position(node.line, node.column)), f"type {valtype} and {vardata.type} is not compatible"))
+                return
         else:
             self.eval_expression(node)
     

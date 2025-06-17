@@ -1,6 +1,6 @@
 import stdlib;
 
-let x: Array;
+let x: ArrayType;
 x = Array([1,2,3]);
 x.push(4);
 print(x.get());
@@ -17,4 +17,3 @@ let y: X;
 
 y.points = 69;
 y.x();
-

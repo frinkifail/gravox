@@ -7,7 +7,6 @@ from grvast import ASTNode, MethodCallNode, StructFieldAccessNode, StringLiteral
     ArrayLiteralNode, ArrayIndexNode
 from lexing import Token, TokenType, DATA_TYPES
 
-
 class Parser:
     def __init__(self, tokens: list[Token], lsp_mode = False):
         self.tokens = tokens
@@ -50,21 +49,30 @@ class Parser:
         statements = []
         while self.current_token().type != TokenType.EOF:
             statements.append(self.parse_statement())
-        return ProgramNode(statements)
+        node = ProgramNode(statements)
+        node.line = statements[0].line if statements else 1 - 1
+        node.column = statements[0].column if statements else 1 - 1
+        return node
 
     def parse_block(self):
-        self.consume(TokenType.LBRACE)
+        lbrace = self.consume(TokenType.LBRACE)
         statements = []
         while self.current_token().type != TokenType.RBRACE:
             statements.append(self.parse_statement())
         self.consume(TokenType.RBRACE)
-        return BlockNode(statements)
+        node = BlockNode(statements)
+        node.line = lbrace.line - 1
+        node.column = lbrace.column - 1
+        return node
 
     def parse_import(self):
-        self.consume(TokenType.IMPORT)
+        import_token = self.consume(TokenType.IMPORT)
         module_name = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.SEMICOLON)
-        return ImportNode(module_name.value)
+        node = ImportNode(module_name.value)
+        node.line = import_token.line - 1
+        node.column = import_token.column - 1
+        return node
 
     def parse_statement(self):
         token = self.current_token()
@@ -108,16 +116,19 @@ class Parser:
         return expr
 
     def parse_try_statement(self):
-        self.consume(TokenType.TRY)
+        try_token = self.consume(TokenType.TRY)
         try_block = self.parse_block()
         catch_block = None
         if self.current_token().type == TokenType.CATCH:
             self.consume(TokenType.CATCH)
             catch_block = self.parse_block()
-        return TryNode(try_block, catch_block)
+        node = TryNode(try_block, catch_block)
+        node.line = try_token.line - 1
+        node.column = try_token.column - 1
+        return node
 
     def parse_variable_declaration(self):
-        self.consume(TokenType.LET)
+        let_token = self.consume(TokenType.LET)
         var_name_token = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.COLON)
         data_type_token = self.consume_data_type()
@@ -126,23 +137,32 @@ class Parser:
             self.consume(TokenType.ASSIGN)
             value_expr = self.parse_expression()
         self.consume(TokenType.SEMICOLON)
-        return LetMemoryNode(var_name_token.value, data_type_token.value, value_expr)
+        node = LetMemoryNode(var_name_token.value, data_type_token.value, value_expr)
+        node.line = let_token.line - 1
+        node.column = let_token.column - 1
+        return node
 
     def parse_memory_free(self):
-        self.consume(TokenType.FREE)
+        free_token = self.consume(TokenType.FREE)
         var_name_token = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.SEMICOLON)
-        return FreeMemoryNode(var_name_token.value)
+        node = FreeMemoryNode(var_name_token.value)
+        node.line = free_token.line - 1
+        node.column = free_token.column - 1
+        return node
 
     def parse_variable_assignment(self):
         var_name_token = self.consume(TokenType.IDENTIFIER)
-        self.consume(TokenType.ASSIGN)
+        assign_token = self.consume(TokenType.ASSIGN)
         value_expr = self.parse_expression()
         self.consume(TokenType.SEMICOLON)
-        return VarAssignNode(var_name_token.value, value_expr)
+        node = VarAssignNode(var_name_token.value, value_expr)
+        node.line = var_name_token.line - 1
+        node.column = var_name_token.column - 1
+        return node
 
     def parse_function_definition(self):
-        self.consume(TokenType.DEF)
+        def_token = self.consume(TokenType.DEF)
         func_name_token = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.LPAREN)
         params = []
@@ -161,43 +181,56 @@ class Parser:
         self.consume(TokenType.ARROW)
         return_type_token = self.consume_data_type()
         body = self.parse_block()
-        return FunctionDefNode(func_name_token.value, params, return_type_token.value, body)
+        node = FunctionDefNode(func_name_token.value, params, return_type_token.value, body)
+        node.line = def_token.line - 1
+        node.column = def_token.column - 1
+        return node
 
     def parse_function_call_statement(self):  # Function call used as statement (e.g., function());
         func_call = self.parse_postfix_expression()  # This will handle the function call
         self.consume(TokenType.SEMICOLON)
+        # func_call already has line/column
         return func_call
 
     def parse_return_statement(self):
-        self.consume(TokenType.RETURN)
+        return_token = self.consume(TokenType.RETURN)
         return_expr = self.parse_expression()
         self.consume(TokenType.SEMICOLON)
-        return ReturnNode(return_expr)
+        node = ReturnNode(return_expr)
+        node.line = return_token.line - 1
+        node.column = return_token.column - 1
+        return node
 
     def parse_if_statement(self):
-        self.consume(TokenType.IF)
+        if_token = self.consume(TokenType.IF)
         condition = self.parse_expression()
         then_block = self.parse_block()
         elif_blocks = []
         else_block = None
         while self.current_token().type == TokenType.ELIF:
-            self.consume(TokenType.ELIF)
+            elif_token = self.consume(TokenType.ELIF)
             elif_condition = self.parse_expression()
             elif_block = self.parse_block()
             elif_blocks.append((elif_condition, elif_block))
         if self.current_token().type == TokenType.ELSE:
             self.consume(TokenType.ELSE)
             else_block = self.parse_block()
-        return IfStatementNode(condition, then_block, else_block, elif_blocks)
+        node = IfStatementNode(condition, then_block, else_block, elif_blocks)
+        node.line = if_token.line - 1
+        node.column = if_token.column - 1
+        return node
 
     def parse_while_loop(self):
-        self.consume(TokenType.WHILE)
+        while_token = self.consume(TokenType.WHILE)
         condition = self.parse_expression()
         loop_block = self.parse_block()
-        return WhileLoopNode(condition, loop_block)
+        node = WhileLoopNode(condition, loop_block)
+        node.line = while_token.line - 1
+        node.column = while_token.column - 1
+        return node
 
     def parse_for_loop(self):
-        self.consume(TokenType.FOR)
+        for_token = self.consume(TokenType.FOR)
         self.consume(TokenType.LPAREN)
         init_stmt = self.parse_statement()
         condition_expr = self.parse_expression()
@@ -205,17 +238,23 @@ class Parser:
         increment_stmt = self.parse_statement()
         self.consume(TokenType.RPAREN)
         loop_block = self.parse_block()
-        return ForLoopNode(init_stmt, condition_expr, increment_stmt, loop_block)
+        node = ForLoopNode(init_stmt, condition_expr, increment_stmt, loop_block)
+        node.line = for_token.line - 1
+        node.column = for_token.column - 1
+        return node
 
     def parse_type_cast(self):
-        self.consume(TokenType.LESS_THAN)
+        lt_token = self.consume(TokenType.LESS_THAN)
         target_type_token = self.consume_data_type()
         self.consume(TokenType.GREATER_THAN)
         expression = self.parse_atom()
-        return TypeCastNode(target_type_token.value, expression)
+        node = TypeCastNode(target_type_token.value, expression)
+        node.line = lt_token.line - 1
+        node.column = lt_token.column - 1
+        return node
 
     def parse_struct_definition(self):
-        self.consume(TokenType.STRUCT)
+        struct_token = self.consume(TokenType.STRUCT)
         struct_name_token = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.LBRACE)
         fields = []
@@ -230,10 +269,13 @@ class Parser:
                 self.consume(TokenType.SEMICOLON)
                 fields.append((field_name_token.value, field_type_token.value))
         self.consume(TokenType.RBRACE)
-        return StructDefNode(struct_name_token.value, fields, functions)
+        node = StructDefNode(struct_name_token.value, fields, functions)
+        node.line = struct_token.line - 1
+        node.column = struct_token.column - 1
+        return node
 
     def parse_enum_definition(self):
-        self.consume(TokenType.ENUM)
+        enum_token = self.consume(TokenType.ENUM)
         enum_name_token = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.LBRACE)
         members = []
@@ -242,22 +284,13 @@ class Parser:
             self.consume(TokenType.COMMA)
             members.append(member_name_token.value)
         self.consume(TokenType.RBRACE)
-        return EnumDefNode(enum_name_token.value, members)
-
-    # def parse_struct_field_assignment_or_access(self):
-    #     struct_var_name_token = self.consume(TokenType.IDENTIFIER)
-    #     self.consume(TokenType.DOT)
-    #     field_name_token = self.consume(TokenType.IDENTIFIER)
-    #     if self.current_token().type == TokenType.ASSIGN:
-    #         self.consume(TokenType.ASSIGN)
-    #         value_expr = self.parse_expression()
-    #         self.consume(TokenType.SEMICOLON)
-    #         return VarAssignNode(f"{struct_var_name_token.value}.{field_name_token.value}", value_expr)  # Using dot notation in name for struct fields
-    #     else:
-    #         return StructFieldAccessNode(struct_var_name_token.value, field_name_token.value)
+        node = EnumDefNode(enum_name_token.value, members)
+        node.line = enum_token.line - 1
+        node.column = enum_token.column - 1
+        return node
 
     def parse_spawn_task(self):
-        self.consume(TokenType.SPAWN)
+        spawn_token = self.consume(TokenType.SPAWN)
         self.consume(TokenType.IDENTIFIER) # consume 'task' keyword
         task_name_token = self.consume(TokenType.IDENTIFIER)
         self.consume(TokenType.LPAREN)
@@ -275,7 +308,10 @@ class Parser:
                 params.append((param_name_token.value, param_type_token.value))
         self.consume(TokenType.RPAREN)
         body = self.parse_block()
-        return SpawnTaskNode(task_name_token.value, params, body)
+        node = SpawnTaskNode(task_name_token.value, params, body)
+        node.line = spawn_token.line - 1
+        node.column = spawn_token.column - 1
+        return node
 
     # --- Expression Parsing (Precedence Climbing) ---
     def parse_expression(self):
@@ -286,7 +322,10 @@ class Parser:
         while self.current_token().type == TokenType.OR:
             op_token = self.consume(TokenType.OR)
             right_expr = self.parse_bitwise_xor()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_bitwise_xor(self):
@@ -294,7 +333,10 @@ class Parser:
         while self.current_token().type == TokenType.XOR:
             op_token = self.consume(TokenType.XOR)
             right_expr = self.parse_bitwise_and()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_bitwise_and(self):
@@ -302,7 +344,10 @@ class Parser:
         while self.current_token().type == TokenType.AND:
             op_token = self.consume(TokenType.AND)
             right_expr = self.parse_equality()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_equality(self):
@@ -310,7 +355,10 @@ class Parser:
         while self.current_token().type in (TokenType.EQUAL, TokenType.NOT_EQUAL):
             op_token = self.consume(self.current_token().type)
             right_expr = self.parse_comparison()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_comparison(self):
@@ -318,7 +366,10 @@ class Parser:
         while self.current_token().type in (TokenType.GREATER_THAN, TokenType.LESS_THAN, TokenType.GREATER_EQUAL, TokenType.LESS_EQUAL):
             op_token = self.consume(self.current_token().type)
             right_expr = self.parse_shift()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_shift(self):
@@ -326,7 +377,10 @@ class Parser:
         while self.current_token().type in (TokenType.LSHIFT, TokenType.RSHIFT):
             op_token = self.consume(self.current_token().type)
             right_expr = self.parse_term()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_term(self):
@@ -334,7 +388,10 @@ class Parser:
         while self.current_token().type in (TokenType.PLUS, TokenType.MINUS):
             op_token = self.consume(self.current_token().type)
             right_expr = self.parse_factor()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_factor(self):
@@ -342,14 +399,20 @@ class Parser:
         while self.current_token().type in (TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO):
             op_token = self.consume(self.current_token().type)
             right_expr = self.parse_unary()
-            left_expr = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node = BinaryOpNode(op_token.type, left_expr, right_expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            left_expr = node
         return left_expr
 
     def parse_unary(self):
         if self.current_token().type in (TokenType.MINUS, TokenType.BIT_NOT, TokenType.POINTER_DEREF, TokenType.POINTER_REF):
             op_token = self.consume(self.current_token().type)
             expr = self.parse_unary() # Apply unary to the result of another unary
-            return UnaryOpNode(op_token.type, expr)
+            node = UnaryOpNode(op_token.type, expr)
+            node.line = op_token.line - 1
+            node.column = op_token.column - 1
+            return node
         return self.parse_postfix_expression()
 
     def parse_struct_field_assignment_or_access(self):
@@ -358,13 +421,17 @@ class Parser:
 
         # Check if this is an assignment (for field assignments like struct.field = value)
         if isinstance(expr, StructFieldAccessNode) and self.current_token().type == TokenType.ASSIGN:
-            self.consume(TokenType.ASSIGN)
+            assign_token = self.consume(TokenType.ASSIGN)
             value_expr = self.parse_expression()
             self.consume(TokenType.SEMICOLON)
-            return VarAssignNode(f"{expr.struct_var_name}.{expr.field_name}", value_expr)
+            node = VarAssignNode(f"{expr.struct_var_name}.{expr.field_name}", value_expr)
+            node.line = assign_token.line - 1
+            node.column = assign_token.column - 1
+            return node
         else:
             # This is either a method call or field access - consume semicolon and return
             self.consume(TokenType.SEMICOLON)
+            # expr already has line/column
             return expr
 
     def parse_postfix_expression(self):
@@ -374,8 +441,7 @@ class Parser:
         # Then, loop to parse any postfix operators like (), [], or .
         while True:
             if self.current_token().type == TokenType.LPAREN:
-                # Function call, e.g. ( ... )
-                self.consume(TokenType.LPAREN)
+                lparen = self.consume(TokenType.LPAREN)
                 args = []
                 if self.current_token().type != TokenType.RPAREN:
                     args.append(self.parse_expression())
@@ -384,23 +450,26 @@ class Parser:
                         args.append(self.parse_expression())
                 self.consume(TokenType.RPAREN)
                 # 'node' becomes the callee of the function call
-                node = FunctionCallNode(cast(IdentifierNode, node), args)
+                call_node = FunctionCallNode(cast(IdentifierNode, node), args)
+                call_node.line = lparen.line - 1
+                call_node.column = lparen.column - 1
+                node = call_node
             elif self.current_token().type == TokenType.LBRACKET:
-                # Array index, e.g. [ ... ]
-                self.consume(TokenType.LBRACKET)
+                lbracket = self.consume(TokenType.LBRACKET)
                 index_expr = self.parse_expression()
                 self.consume(TokenType.RBRACKET)
-                node = ArrayIndexNode(node, index_expr)
+                index_node = ArrayIndexNode(node, index_expr)
+                index_node.line = lbracket.line - 1
+                index_node.column = lbracket.column - 1
+                node = index_node
             elif self.current_token().type == TokenType.DOT:
-                # Member access for structs, e.g., .member or .method()
-                self.consume(TokenType.DOT)
+                dot_token = self.consume(TokenType.DOT)
                 if (peek := self.peek()) and peek.type == TokenType.INT_LITERAL:
                     member_name_token = self.consume(TokenType.INT_LITERAL)
                 else:
                     member_name_token = self.consume(TokenType.IDENTIFIER)
                 if self.current_token().type == TokenType.LPAREN:
-                    # Method call
-                    self.consume(TokenType.LPAREN)
+                    lparen = self.consume(TokenType.LPAREN)
                     args = []
                     if self.current_token().type != TokenType.RPAREN:
                         args.append(self.parse_expression())
@@ -408,15 +477,18 @@ class Parser:
                             self.consume(TokenType.COMMA)
                             args.append(self.parse_expression())
                     self.consume(TokenType.RPAREN)
-                    node = MethodCallNode(node, member_name_token.value, args)
+                    method_node = MethodCallNode(node, member_name_token.value, args)
+                    method_node.line = dot_token.line - 1
+                    method_node.column = dot_token.column - 1
+                    node = method_node
                 else:
-                    # Field access
                     if isinstance(node, IdentifierNode):
-                        # Simple case: structVar.field
-                        node = StructFieldAccessNode(node.name, member_name_token.value)
+                        field_node = StructFieldAccessNode(node.name, member_name_token.value)
                     else:
-                        # Complex case: expression.field
-                        node = StructFieldAccessNode(node, member_name_token.value)
+                        field_node = StructFieldAccessNode(node, member_name_token.value)
+                    field_node.line = dot_token.line - 1
+                    field_node.column = dot_token.column - 1
+                    node = field_node
             else:
                 break # No more postfix operators
         return node
@@ -428,20 +500,44 @@ class Parser:
             self.consume(TokenType.LPAREN)
             expr = self.parse_expression()
             self.consume(TokenType.RPAREN)
+            # expr already has line/column
             return expr
         elif token.type == TokenType.INT_LITERAL:
-            return IntLiteralNode(self.consume(TokenType.INT_LITERAL).value)
+            tok = self.consume(TokenType.INT_LITERAL)
+            node = IntLiteralNode(tok.value)
+            node.line = tok.line - 1
+            node.column = tok.column - 1
+            return node
         elif token.type == TokenType.FLOAT_LITERAL:
-            return FloatLiteralNode(self.consume(TokenType.FLOAT_LITERAL).value)
+            tok = self.consume(TokenType.FLOAT_LITERAL)
+            node = FloatLiteralNode(tok.value)
+            node.line = tok.line - 1
+            node.column = tok.column - 1
+            return node
         elif token.type == TokenType.CHAR_LITERAL:
-            return CharLiteralNode(self.consume(TokenType.CHAR_LITERAL).value)
+            tok = self.consume(TokenType.CHAR_LITERAL)
+            node = CharLiteralNode(tok.value)
+            node.line = tok.line - 1
+            node.column = tok.column - 1
+            return node
         elif token.type == TokenType.STRING_LITERAL:
-            return StringLiteralNode(self.consume(TokenType.STRING_LITERAL).value)
+            tok = self.consume(TokenType.STRING_LITERAL)
+            node = StringLiteralNode(tok.value)
+            node.line = tok.line - 1
+            node.column = tok.column - 1
+            return node
         elif token.type == TokenType.NULL:
-            self.consume(TokenType.NULL)
-            return NullLiteralNode()
+            tok = self.consume(TokenType.NULL)
+            node = NullLiteralNode()
+            node.line = tok.line - 1
+            node.column = tok.column - 1
+            return node
         elif token.type == TokenType.IDENTIFIER:
-            return IdentifierNode(self.consume(TokenType.IDENTIFIER).value)
+            tok = self.consume(TokenType.IDENTIFIER)
+            node = IdentifierNode(tok.value)
+            node.line = tok.line - 1
+            node.column = tok.column - 1
+            return node
         elif token.type == TokenType.LESS_THAN and (peek := self.peek(1)) and peek.type in DATA_TYPES.values():
             return self.parse_type_cast()
         elif token.type == TokenType.LBRACKET:
@@ -452,7 +548,7 @@ class Parser:
             raise Exception(f"Unexpected token {token.type} in expression at {token.line}:{token.column}")
 
     def parse_array_literal(self):
-        self.consume(TokenType.LBRACKET)
+        lbracket = self.consume(TokenType.LBRACKET)
         elements = []
         if self.current_token().type != TokenType.RBRACKET:
             elements.append(self.parse_expression())
@@ -460,4 +556,7 @@ class Parser:
                 self.consume(TokenType.COMMA)
                 elements.append(self.parse_expression())
         self.consume(TokenType.RBRACKET)
-        return ArrayLiteralNode(elements)
+        node = ArrayLiteralNode(elements)
+        node.line = lbracket.line - 1
+        node.column = lbracket.column - 1
+        return node

@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import Any
 
 
 class ASTNode:
-    pass
+    line: int = 0
+    column: int = 0
 
 
 class ProgramNode(ASTNode):

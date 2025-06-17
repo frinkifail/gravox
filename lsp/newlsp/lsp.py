@@ -58,6 +58,67 @@ class NewLSP(LanguageServer):
         # self.show_message_log(str(self.data_table))
         # self.show_message_log(str(la.ls.data_table))
         # self.show_message("committing war crimes")
+        return la
+
+    def get_struct_members(self, struct_name: str, uri: str) -> list[CompletionItem]:
+        """Get completion items for struct members (fields and methods)"""
+        completions = []
+        
+        symbols = self.data_table.get(uri, RuntimeContext()).symbols
+        if struct_name not in symbols:
+            return completions
+            
+        symbol = symbols[struct_name]
+        if symbol.kind != RuntimeContext.Symbol.SymbolKind.STRUCT:
+            return completions
+            
+        struct_data = cast(RuntimeContext.StructSymbolData, symbol.data)
+        # self.show_message_log(str(struct_data))
+        
+        # Add struct fields
+        # if hasattr(struct_data, 'fields'):
+        for field_name, field_type in struct_data.fields.items():
+            completions.append(CompletionItem(
+                label=field_name,
+                detail=f"{field_name}: {field_type}",
+                kind=CompletionItemKind.Field
+            ))
+        
+        # Add struct methods
+        # if hasattr(struct_data, 'methods'):
+        for method_name, method_data in struct_data.methods.items():
+            params_list = ", ".join(f"{k}: {v}" for k, v in method_data.parameters.items())
+            completions.append(CompletionItem(
+                label=method_name,
+                detail=f"{method_name}({params_list}) -> {method_data.return_type}",
+                kind=CompletionItemKind.Method
+            ))
+        
+        return completions
+
+    def find_variable_type_at_position(self, uri: str, line: str, character: int) -> str | None:
+        """Find the type of a variable before the dot at the given position"""
+        # Extract text before the dot
+        text_before_dot = line[:character-1]  # -1 to exclude the dot
+        
+        # Find the last word (variable name) before the dot
+        match = re.search(r'(\w+)$', text_before_dot.strip())
+        if not match:
+            return None
+            
+        var_name = match.group(1)
+        
+        # Look up the variable in the symbol table
+        symbols = self.data_table.get(uri, RuntimeContext()).symbols
+        if var_name not in symbols:
+            return None
+            
+        symbol = symbols[var_name]
+        if symbol.kind == RuntimeContext.Symbol.SymbolKind.VARIABLE:
+            var_data = cast(RuntimeContext.VariableSymbolData, symbol.data)
+            return var_data.type
+            
+        return None
 
 server = NewLSP()
 
@@ -80,7 +141,8 @@ def did_open(ls: NewLSP, params: DidOpenTextDocumentParams):
     ls.publish_diagnostics(params.text_document.uri, [])
     ls.files[params.text_document.uri] = params.text_document.text
     ls.evaluate_ast(params.text_document.uri, params.text_document.text)
-    ls.evaluate_runtime(params.text_document.uri)
+    la = ls.evaluate_runtime(params.text_document.uri)
+    ls.publish_diagnostics(params.text_document.uri, la.diagnostics)
 
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
 def did_change(ls: NewLSP, params: DidChangeTextDocumentParams):
@@ -90,18 +152,45 @@ def did_change(ls: NewLSP, params: DidChangeTextDocumentParams):
     ls.publish_diagnostics(params.text_document.uri, [])
     ls.files[params.text_document.uri] = full_text
     ls.evaluate_ast(params.text_document.uri, full_text)
-    ls.evaluate_runtime(params.text_document.uri)
+    la = ls.evaluate_runtime(params.text_document.uri)
+    ls.publish_diagnostics(params.text_document.uri, la.diagnostics)
 
-@server.feature(TEXT_DOCUMENT_COMPLETION)
+@server.feature(TEXT_DOCUMENT_COMPLETION, CompletionOptions(['.']))
 def completion(ls: NewLSP, params: CompletionParams):
+    uri = params.text_document.uri
+    position = params.position
+    
+    # Get the current line
+    doc = ls.workspace.get_document(uri)
+    lines = doc.source.splitlines()
+    
+    if position.line >= len(lines):
+        return CompletionList(False, [])
+    
+    current_line = lines[position.line]
+    
+    # Check if we're completing after a dot
+    if position.character > 0 and current_line[position.character - 1] == '.':
+        # This is struct member completion
+        var_type = ls.find_variable_type_at_position(uri, current_line, position.character)
+        if var_type:
+            struct_completions = ls.get_struct_members(var_type, uri)
+            return CompletionList(False, struct_completions)
+        else:
+            # No completions if we can't determine the type
+            return CompletionList(False, [])
+    
+    # Regular completion (not after a dot)
+    symbols = ls.data_table.get(uri, RuntimeContext()).symbols if uri in ls.data_table else {}
+    
     return CompletionList(
         False,
         [
             *[CompletionItem(i[0], detail=i[1], documentation=i[2], kind=CompletionItemKind.Function) for i in builtin_fns],
             *[CompletionItem(i[0], documentation=i[1], kind=CompletionItemKind.Class) for i in builtin_types],
-            *[CompletionItem(k, detail=f"{k}: {cast(RuntimeContext.VariableSymbolData, v.data).type}", kind=CompletionItemKind.Variable) for k, v in ls.data_table[params.text_document.uri].symbols.items() if v.kind == RuntimeContext.Symbol.SymbolKind.VARIABLE],
-            *[CompletionItem(k, detail=f"{k}({", ".join([f"{x}: {c}" for x, c in cast(RuntimeContext.FunctionSymbolData, v.data).parameters.items()])}) -> {cast(RuntimeContext.FunctionSymbolData, v.data).return_type}", kind=CompletionItemKind.Function) for k, v in ls.data_table[params.text_document.uri].symbols.items() if v.kind == RuntimeContext.Symbol.SymbolKind.FUNCTION],
-            *[CompletionItem(k, kind=CompletionItemKind.Struct) for k, v in ls.data_table[params.text_document.uri].symbols.items() if v.kind == v.SymbolKind.STRUCT]
+            *[CompletionItem(k, detail=f"{k}: {cast(RuntimeContext.VariableSymbolData, v.data).type}", kind=CompletionItemKind.Variable) for k, v in symbols.items() if v.kind == RuntimeContext.Symbol.SymbolKind.VARIABLE],
+            *[CompletionItem(k, detail=f"{k}({", ".join([f"{x}: {c}" for x, c in cast(RuntimeContext.FunctionSymbolData, v.data).parameters.items()])}) -> {cast(RuntimeContext.FunctionSymbolData, v.data).return_type}", kind=CompletionItemKind.Function) for k, v in symbols.items() if v.kind == RuntimeContext.Symbol.SymbolKind.FUNCTION],
+            *[CompletionItem(k, kind=CompletionItemKind.Struct) for k, v in symbols.items() if v.kind == v.SymbolKind.STRUCT]
         ]
     )
 
