@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from grvast import ASTNode, ForLoopNode, IfStatementNode, ImportNode, LetMemoryNode, ArrayIndexNode, ArrayLiteralNode, BlockNode, CharLiteralNode, EnumMemberNode, FloatLiteralNode, FunctionCallNode, FunctionDefNode, IdentifierNode, IntLiteralNode, MethodCallNode, NullLiteralNode, ProgramNode, StringLiteralNode, StructDefNode, StructFieldAccessNode, TryNode, TypeCastNode, UnaryOpNode, VarAssignNode, WhileLoopNode
 from lexing import tokenize
 from lsp.newlsp.coredata import RuntimeContext, single_range
@@ -23,9 +23,9 @@ class StaticAnalyser:
     def eval_expression(self, node: ASTNode) -> str: # type
         if isinstance(node, IntLiteralNode):
             # return node.value
-            return "int(unknown size)"
+            return "int8" # default size
         elif isinstance(node, FloatLiteralNode):
-            return "float"
+            return "float32" # default size
         elif isinstance(node, CharLiteralNode):
             return "char"
         elif isinstance(node, StringLiteralNode):
@@ -33,13 +33,13 @@ class StaticAnalyser:
         elif isinstance(node, NullLiteralNode):
             return "null"
         elif isinstance(node, ArrayLiteralNode):
-            return "array<unknown>"
+            return "array"
         elif isinstance(node, IdentifierNode):
             pass # TODO
         elif isinstance(node, UnaryOpNode):
             pass # TODO
         elif isinstance(node, ArrayIndexNode):
-            raise NotImplementedError("TBA") # TODO
+            pass # TODO
             # array_name = str(node.array_name)
             # index = self.eval_expression(node.index_expr)
             # if array_name in self.symbol_table:
@@ -63,6 +63,25 @@ class StaticAnalyser:
             return node.enum_name # Could be improved to store enum values if needed
         elif isinstance(node, MethodCallNode):
             pass # TODO
+        elif isinstance(node, FunctionCallNode):
+            try:
+                func_name = str(node.func_name)
+                if func_name in self.ls.data_table[self.filename].symbols:
+                    sym = self.ls.data_table[self.filename].symbols[func_name]
+                    if sym.kind == RuntimeContext.Symbol.SymbolKind.FUNCTION:
+                        typ = cast(RuntimeContext.FunctionSymbolData, sym.data).return_type
+                        if isinstance(typ, tuple):
+                            return typ[0]
+                        return typ
+                    else:
+                        raise Exception(f"'{func_name}' is not a function")
+                else:
+                    raise Exception(f"Function '{func_name}' not found")
+            except Exception as e:
+                self.diagnostics.append(Diagnostic(
+                    range=single_range(Position(node.line, node.column)),
+                    message=str(e)
+                ))
 
         return "unknown"
 
@@ -120,20 +139,42 @@ class StaticAnalyser:
             self.eval_statement(node.init_stmt)
             self.eval_statement(node.loop_block)
         elif isinstance(node, VarAssignNode):
-            valtype = self.eval_expression(node.value_expr)
-            var = self.get_symbol_maybe(node.var_name)
-            if not var:
-                self.diagnostics.append(Diagnostic(single_range(Position(node.line, node.column)), f"undefined variable '{node.var_name}'"))
-                return
-            if var.kind != var.SymbolKind.VARIABLE:
-                self.diagnostics.append(Diagnostic(single_range(Position(node.line, node.column)), f"assigning to a non-variable '{node.var_name}'"))
-                return
-            vardata = cast(RuntimeContext.VariableSymbolData, var.data)
-            if valtype != vardata.type:
-                self.diagnostics.append(Diagnostic(single_range(Position(node.line, node.column)), f"type {valtype} and {vardata.type} is not compatible"))
-                return
+            try:
+                self._handle_variable_assignment(node.var_name, self.eval_expression(node.value_expr))
+            except Exception as e:
+                self.diagnostics.append(Diagnostic(
+                    range=single_range(Position(node.line, node.column)),
+                    message=str(e)
+                ))
         else:
             self.eval_expression(node)
+    
+    def _handle_variable_assignment(self, var_name: str, new_value_type: str):
+        if '.' in var_name:  # Struct field assignment e.g., vec.x = 10;
+            struct_var_name, field_name = var_name.split('.', 1)
+            sym = self.get_symbol_maybe(struct_var_name)
+            if not sym:
+                raise Exception(f"undefined variable '{struct_var_name}'")
+            if sym.kind != RuntimeContext.Symbol.SymbolKind.VARIABLE:
+                raise Exception(f"assigning to a non-variable '{struct_var_name}'")
+            struct = self.get_symbol_maybe(cast(RuntimeContext.VariableSymbolData, sym.data).type)
+            if not struct or struct.kind != RuntimeContext.Symbol.SymbolKind.STRUCT:
+                raise Exception(f"'{struct_var_name}' is not a struct variable")
+            sd = cast(RuntimeContext.StructSymbolData, struct.data)
+            if field_name not in sd.fields:
+                raise Exception(f"Struct '{struct_var_name}' does not have field '{field_name}'")
+            field_type = sd.fields[field_name]
+            if new_value_type != field_type:
+                raise Exception(f"type {new_value_type} and {field_type} is not compatible")
+        else:
+            sym = self.get_symbol_maybe(var_name)
+            if not sym:
+                raise Exception(f"undefined variable '{var_name}'")
+            if sym.kind != RuntimeContext.Symbol.SymbolKind.VARIABLE:
+                raise Exception(f"assigning to a non-variable '{var_name}'")
+            vardata = cast(RuntimeContext.VariableSymbolData, sym.data)
+            if new_value_type != vardata.type:
+                raise Exception(f"type {new_value_type} and {vardata.type} is not compatible")
     
     # def eval_variable(self, node: LetMemoryNode):
     #     return "unknown"

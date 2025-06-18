@@ -44,6 +44,9 @@ class VarAssignNode(ASTNode):
 class IdentifierNode(ASTNode):
     def __init__(self, name: str) -> None:
         self.name = name
+    
+    def __str__(self):
+        return self.name
 
     def __repr__(self) -> str:
         return f'<IdentifierNode name={self.name}>'

@@ -40,6 +40,7 @@ class RuntimeContext:
         name: str
         kind: SymbolKind
         data: AnySymbolData
+        dont_complete = False # If True, this symbol will not be included in autocompletion suggestions
     symbols: dict[str, Symbol] = field(default_factory=dict) # { name: sym }
 
 # (name, syntax (detail), docs)

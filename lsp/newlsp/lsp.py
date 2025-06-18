@@ -52,6 +52,16 @@ class NewLSP(LanguageServer):
             raise LookupError("Couldn't find AST for this file.")
         if self.data_table.get(uri):
             del self.data_table[uri]
+        for name, syntax, docs in builtin_fns:
+            if name not in self.data_table[uri].symbols:
+                self.data_table[uri].symbols[name] = RuntimeContext.Symbol(
+                    name=name,
+                    kind=RuntimeContext.Symbol.SymbolKind.FUNCTION,
+                    data=RuntimeContext.FunctionSymbolData(
+                        parameters={},
+                        return_type=syntax.split(" -> ")[-1].strip()
+                    )
+                )
         la = StaticAnalyser(self, uri, ast)
         # self.show_message("committing war crimes soon")
         la.eval_statement(ast)

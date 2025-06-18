@@ -1,0 +1,8 @@
+while true {
+    print("Enter an expression to evaluate (or 'exit' to quit):");
+    let expression: string = input("Expression: ");
+    if expression == "exit" {
+        print("Exiting calculator.");
+        break;
+    }
+}
